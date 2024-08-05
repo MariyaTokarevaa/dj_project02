@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from copy import deepcopy
 
 DATA = {
     'omlet': {
@@ -29,26 +30,30 @@ DATA = {
 #   }
 # }
 def calculate_view(request, recipe_name):
-    if recipe_name in DATA:
-        data = DATA[recipe_name]
-        servings = request.GET.get('servings', None)
-        if servings:
-            result = dict()
-            for item, value in data.items():
-                new_value = value * int(servings)
-                result[item] = new_value
-            context = {
-                'recipe_name': recipe_name,
-                'recipe': result
-            }
-        else:
-            context = {
-                'recipe_name': recipe_name,
-                'recipe': data
-            }
-    else:
-        context = None
-    return render(request, 'calculator/dishes.html', context)
+    # Проверка существования рецепта
+    if recipe_name not in DATA:
+        return render(request, 'calculator/404.html', status=404)
+
+    # Клонирование данных рецепта
+    recipe = deepcopy(DATA[recipe_name])
+    servings = request.GET.get('servings', 1)
+
+    try:
+        servings = int(servings)
+        if servings <= 0:
+            raise ValueError
+    except ValueError:
+        return render(request, 'calculator/400.html', status=400)
+
+    # Умножение ингредиентов на количество порций
+    for ingredient, amount in recipe.items():
+        recipe[ingredient] = amount * servings
+
+    context = {
+        'recipe_name': recipe_name,
+        'recipe': recipe
+    }
+return render(request, 'calculator/dishes.html', context)
 
 
 def home_view(request):
